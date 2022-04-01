@@ -1,0 +1,78 @@
+name: CI-CD - Demo
+on:
+  push:
+    branches: [ main ]
+    #pull_request:
+    #branches: [ release ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a job called "build"
+  test:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: lint
+        run: npm run lint
+
+      #- name: Unit tests
+      #  run: npm run test:ci
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app
+        run: npm run prod
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: devops-test-${{ github.run_id }}-${{ github.run_number }}
+          path: ./dist/deploy-azure-angular #bien récupérer le nom du projet dans le dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifact #download artifact dans le dossier /build que github crée puis le déployer dans le target ('/var/www/html/')
+        uses: actions/download-artifact@v2
+        with:
+          name: devops-test-${{ github.run_id }}-${{ github.run_number }} #des paramètres créés pas github
+          path: './build'
+
+      - name: copy file via ssh password
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: './build/*'
+          target: '/home/azureuser/website/app-azure-front/www/'
