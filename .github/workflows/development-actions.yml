@@ -1,7 +1,7 @@
 name: CI-CD - Demo
 on:
   push:
-    branches: [ main ]
+    branches: [ development ]
     #pull_request:
     #branches: [ release ]
   # Allows you to run this workflow manually from the Actions tab
